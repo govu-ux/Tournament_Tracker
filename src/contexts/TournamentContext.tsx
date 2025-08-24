@@ -16,6 +16,7 @@ interface TournamentContextType {
   finalMatch: Match | undefined;
   champion: Team | undefined;
   generatePlayoffs: () => void;
+  resetTournament: () => void;
   loading: boolean;
 }
 
@@ -63,6 +64,18 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
     }
   }, [matches, loading]);
+
+  const resetTournament = () => {
+    setTeams([]);
+    setMatches([]);
+    // Explicitly remove from localStorage as well
+    localStorage.removeItem('tournament_teams');
+    localStorage.removeItem('tournament_matches');
+    toast({
+      title: "Tournament Reset",
+      description: "All teams, matches, and standings have been cleared.",
+    });
+  };
   
   const addTeam = (name: string) => {
     if (teams.some(team => team.name.toLowerCase() === name.toLowerCase())) {
@@ -197,7 +210,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return undefined;
   }, [finalMatch, teams, loading]);
 
-  const value = { teams, matches, addTeam, scheduleMatch, updateMatchResult, standings, playoffTeams, generatePlayoffs, semiFinalMatches, finalMatch, champion, loading };
+  const value = { teams, matches, addTeam, scheduleMatch, updateMatchResult, standings, playoffTeams, generatePlayoffs, semiFinalMatches, finalMatch, champion, loading, resetTournament };
 
   return (
     <TournamentContext.Provider value={value}>
