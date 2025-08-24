@@ -5,8 +5,21 @@ import TeamManager from './TeamManager';
 import MatchManager from './MatchManager';
 import StandingsDisplay from './StandingsDisplay';
 import PlayoffsManager from './PlayoffsManager';
+import { useTournament } from "@/contexts/TournamentContext";
+import { Skeleton } from "./ui/skeleton";
 
 export default function TournamentDashboard() {
+  const { loading } = useTournament();
+
+  if (loading) {
+    return (
+        <div className="space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-96 w-full" />
+        </div>
+    )
+  }
+
   return (
     <Tabs defaultValue="teams" className="w-full">
       <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">

@@ -16,6 +16,7 @@ interface TournamentContextType {
   finalMatch: Match | undefined;
   champion: Team | undefined;
   generatePlayoffs: () => void;
+  loading: boolean;
 }
 
 const TournamentContext = createContext<TournamentContextType | undefined>(undefined);
@@ -24,6 +25,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const { toast } = useToast();
   const [teams, setTeams] = useState<Team[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     try {
@@ -37,24 +39,30 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
     } catch (error) {
       console.error("Failed to parse from localStorage", error);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('tournament_teams', JSON.stringify(teams));
-    } catch (error) {
-      console.error("Failed to save teams to localStorage", error);
+    if (!loading) {
+      try {
+        localStorage.setItem('tournament_teams', JSON.stringify(teams));
+      } catch (error) {
+        console.error("Failed to save teams to localStorage", error);
+      }
     }
-  }, [teams]);
+  }, [teams, loading]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('tournament_matches', JSON.stringify(matches));
-    } catch (error) {
-      console.error("Failed to save matches to localStorage", error);
+    if (!loading) {
+      try {
+        localStorage.setItem('tournament_matches', JSON.stringify(matches));
+      } catch (error) {
+        console.error("Failed to save matches to localStorage", error);
+      }
     }
-  }, [matches]);
+  }, [matches, loading]);
   
   const addTeam = (name: string) => {
     if (teams.some(team => team.name.toLowerCase() === name.toLowerCase())) {
@@ -92,6 +100,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
   
   const standings = useMemo<Standing[]>(() => {
+    if (loading) return [];
     const stats: { [key: number]: Omit<Standing, 'rank' | 'teamName' | 'teamId'> } = teams.reduce((acc, team) => {
       acc[team.id] = { played: 0, wins: 0, losses: 0, draws: 0, points: 0 };
       return acc;
@@ -131,13 +140,14 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     })).sort((a, b) => b.points - a.points || (b.wins - a.wins));
 
     return sortedStandings.map((s, index) => ({ ...s, rank: index + 1 }));
-  }, [teams, matches]);
+  }, [teams, matches, loading]);
 
   const playoffTeams = useMemo(() => {
+      if (loading) return [];
       const groupMatchesFinished = matches.filter(m => m.stage === 'group' && m.winnerId === null && !m.isDraw).length === 0;
       if (standings.length < 4 || !groupMatchesFinished) return [];
       return standings.slice(0, 4).map(s => teams.find(t => t.id === s.teamId)!);
-  }, [standings, teams, matches]);
+  }, [standings, teams, matches, loading]);
 
   const generatePlayoffs = () => {
     if (playoffTeams.length < 4) {
@@ -157,34 +167,40 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     toast({ title: "Success", description: "Playoff matches have been generated." });
   };
   
-  const semiFinalMatches = useMemo(() => matches.filter(m => m.stage === 'semi-final'), [matches]);
+  const semiFinalMatches = useMemo(() => loading ? [] : matches.filter(m => m.stage === 'semi-final'), [matches, loading]);
 
   const finalMatch = useMemo(() => {
+    if (loading) return undefined;
     const semiFinalWinners = semiFinalMatches.filter(m => m.winnerId !== null).map(m => m.winnerId);
     if (semiFinalWinners.length === 2) {
       const existingFinal = matches.find(m => m.stage === 'final');
       if (existingFinal) return existingFinal;
       
       const newFinal: Match = { id: Date.now(), team1Id: semiFinalWinners[0]!, team2Id: semiFinalWinners[1]!, date: new Date(), time: "TBD", winnerId: null, isDraw: false, stage: 'final' };
-      // This is a side-effect in a memo, which is not ideal.
-      // A better approach would be to use a useEffect or a dedicated function.
-      // For this implementation, we'll add it to state when it's first computed.
-      setTimeout(() => setMatches(prev => [...prev, newFinal]), 0);
+      
+      setTimeout(() => {
+        if (!matches.some(m => m.id === newFinal.id)) {
+            setMatches(prev => [...prev, newFinal]);
+        }
+      }, 0);
       return newFinal;
     }
     return matches.find(m => m.stage === 'final');
-  }, [semiFinalMatches, matches]);
+  }, [semiFinalMatches, matches, loading]);
 
   const champion = useMemo(() => {
+    if (loading) return undefined;
     const final = finalMatch;
     if (final && final.winnerId) {
       return teams.find(t => t.id === final.winnerId);
     }
     return undefined;
-  }, [finalMatch, teams]);
+  }, [finalMatch, teams, loading]);
+
+  const value = { teams, matches, addTeam, scheduleMatch, updateMatchResult, standings, playoffTeams, generatePlayoffs, semiFinalMatches, finalMatch, champion, loading };
 
   return (
-    <TournamentContext.Provider value={{ teams, matches, addTeam, scheduleMatch, updateMatchResult, standings, playoffTeams, generatePlayoffs, semiFinalMatches, finalMatch, champion }}>
+    <TournamentContext.Provider value={value}>
       {children}
     </TournamentContext.Provider>
   );
