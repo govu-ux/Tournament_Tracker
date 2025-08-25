@@ -10,6 +10,7 @@ interface TournamentContextType {
   addTeam: (name: string) => void;
   generateLeagueMatches: () => void;
   updateMatchResult: (matchId: number, winnerId: number | null, isDraw: boolean) => void;
+  autoUpdateMatchResult: (matchId: number) => void;
   standings: Standing[];
   playoffTeams: Team[];
   semiFinalMatches: Match[];
@@ -131,6 +132,30 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     );
     toast({ title: "Success", description: "Match result updated." });
   };
+
+  const autoUpdateMatchResult = (matchId: number) => {
+    const match = matches.find(m => m.id === matchId);
+    if (!match) return;
+
+    if (match.stage === 'group') {
+      const random = Math.random();
+      if (random < 0.33) {
+        updateMatchResult(matchId, match.team1Id, false); // Team 1 wins
+      } else if (random < 0.66) {
+        updateMatchResult(matchId, match.team2Id, false); // Team 2 wins
+      } else {
+        updateMatchResult(matchId, null, true); // Draw
+      }
+    } else { // Playoffs (no draws)
+      const random = Math.random();
+      if (random < 0.5) {
+        updateMatchResult(matchId, match.team1Id, false); // Team 1 wins
+      } else {
+        updateMatchResult(matchId, match.team2Id, false); // Team 2 wins
+      }
+    }
+    toast({ title: "Success", description: "Match result auto-generated." });
+  }
   
   const standings = useMemo<Standing[]>(() => {
     if (loading) return [];
@@ -235,7 +260,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return undefined;
   }, [finalMatch, teams, loading]);
 
-  const value = { teams, matches, addTeam, generateLeagueMatches, updateMatchResult, standings, playoffTeams, generatePlayoffs, semiFinalMatches, finalMatch, champion, loading, resetTournament };
+  const value = { teams, matches, addTeam, generateLeagueMatches, updateMatchResult, autoUpdateMatchResult, standings, playoffTeams, generatePlayoffs, semiFinalMatches, finalMatch, champion, loading, resetTournament };
 
   return (
     <TournamentContext.Provider value={value}>

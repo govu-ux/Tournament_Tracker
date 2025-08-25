@@ -4,14 +4,14 @@ import { useTournament } from '@/contexts/TournamentContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Trophy, Swords, ShieldCheck, Crown } from 'lucide-react';
+import { Trophy, Swords, ShieldCheck, Crown, Bot } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 export default function PlayoffsManager() {
-  const { teams, matches, playoffTeams, generatePlayoffs, semiFinalMatches, finalMatch, champion, updateMatchResult } = useTournament();
+  const { teams, matches, playoffTeams, generatePlayoffs, semiFinalMatches, finalMatch, champion, updateMatchResult, autoUpdateMatchResult } = useTournament();
   const getTeamName = (id: number) => teams.find(t => t.id === id)?.name || 'Unknown Team';
   const groupMatches = matches.filter(m => m.stage === 'group');
   const groupStageFinished = groupMatches.length > 0 && groupMatches.every(m => m.winnerId !== null || m.isDraw);
@@ -21,23 +21,28 @@ export default function PlayoffsManager() {
       return <span className="font-semibold text-primary">{getTeamName(match.winnerId)} won</span>;
     }
     return (
-      <Popover>
-        <PopoverTrigger asChild><Button variant="outline" size="sm">Set Winner</Button></PopoverTrigger>
-        <PopoverContent className="w-auto p-4">
-          <RadioGroup onValueChange={(value) => updateMatchResult(match.id, Number(value), false)}>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value={String(match.team1Id)} id={`w1-${match.id}`} />
-                <Label htmlFor={`w1-${match.id}`}>{getTeamName(match.team1Id)}</Label>
+      <div className="flex items-center gap-2">
+        <Popover>
+          <PopoverTrigger asChild><Button variant="outline" size="sm">Set Winner</Button></PopoverTrigger>
+          <PopoverContent className="w-auto p-4">
+            <RadioGroup onValueChange={(value) => updateMatchResult(match.id, Number(value), false)}>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value={String(match.team1Id)} id={`w1-${match.id}`} />
+                  <Label htmlFor={`w1-${match.id}`}>{getTeamName(match.team1Id)}</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value={String(match.team2Id)} id={`w2-${match.id}`} />
+                  <Label htmlFor={`w2-${match.id}`}>{getTeamName(match.team2Id)}</Label>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value={String(match.team2Id)} id={`w2-${match.id}`} />
-                <Label htmlFor={`w2-${match.id}`}>{getTeamName(match.team2Id)}</Label>
-              </div>
-            </div>
-          </RadioGroup>
-        </PopoverContent>
-      </Popover>
+            </RadioGroup>
+          </PopoverContent>
+        </Popover>
+        <Button variant="secondary" size="sm" onClick={() => autoUpdateMatchResult(match.id)}>
+          <Bot /> Auto
+        </Button>
+      </div>
     );
   };
   
