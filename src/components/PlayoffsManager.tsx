@@ -11,9 +11,10 @@ import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 export default function PlayoffsManager() {
-  const { teams, playoffTeams, generatePlayoffs, semiFinalMatches, finalMatch, champion, updateMatchResult } = useTournament();
+  const { teams, matches, playoffTeams, generatePlayoffs, semiFinalMatches, finalMatch, champion, updateMatchResult } = useTournament();
   const getTeamName = (id: number) => teams.find(t => t.id === id)?.name || 'Unknown Team';
-  const groupStageFinished = useTournament().matches.filter(m => m.stage === 'group' && (m.winnerId === null && !m.isDraw)).length === 0;
+  const groupMatches = matches.filter(m => m.stage === 'group');
+  const groupStageFinished = groupMatches.length > 0 && groupMatches.every(m => m.winnerId !== null || m.isDraw);
 
   const renderMatchResultInput = (match: any) => {
     if (match.winnerId) {
@@ -50,22 +51,22 @@ export default function PlayoffsManager() {
         {/* Semi-Finals */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold flex items-center gap-2"><Swords className="h-5 w-5 text-accent" />Semi-Finals</h3>
-          {playoffTeams.length < 4 ? (
+          {!groupStageFinished || playoffTeams.length < 4 ? (
             <Alert>
                 <ShieldCheck className="h-4 w-4" />
                 <AlertTitle>Playoffs Not Ready</AlertTitle>
-                <AlertDescription>The top 4 teams will qualify for playoffs once the group stage is complete. At least 4 teams are required.</AlertDescription>
+                <AlertDescription>The top 4 teams will qualify for playoffs once the league stage is complete. At least 4 teams are required and all league matches must be played.</AlertDescription>
             </Alert>
           ) : (
             <>
               {semiFinalMatches.length === 0 && (
                 <div className="text-center p-4 border-dashed border-2 rounded-lg">
-                    <p className="text-muted-foreground mb-2">The top 4 teams have qualified!</p>
+                    <p className="text-muted-foreground mb-2">The league stage is complete and the top 4 teams have qualified!</p>
                     <div className="flex justify-center gap-4 font-semibold mb-4">
                         {playoffTeams.map(t => <span key={t.id} className="bg-primary/10 text-primary px-3 py-1 rounded-full">{t.name}</span>)}
                     </div>
-                    <Button onClick={generatePlayoffs} disabled={!groupStageFinished}>
-                        {groupStageFinished ? "Generate Semi-Final Matches" : "Finish Group Stage to Generate"}
+                    <Button onClick={generatePlayoffs}>
+                        Generate Semi-Final Matches
                     </Button>
                 </div>
               )}

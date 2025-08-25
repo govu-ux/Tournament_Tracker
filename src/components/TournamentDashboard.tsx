@@ -2,7 +2,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TeamManager from './TeamManager';
-import MatchManager from './MatchManager';
+import LeagueManager from './LeagueManager';
 import StandingsDisplay from './StandingsDisplay';
 import PlayoffsManager from './PlayoffsManager';
 import { useTournament } from "@/contexts/TournamentContext";
@@ -24,7 +24,7 @@ export default function TournamentDashboard() {
     <Tabs defaultValue="teams" className="w-full">
       <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
         <TabsTrigger value="teams">Teams</TabsTrigger>
-        <TabsTrigger value="matches">Schedule &amp; Results</TabsTrigger>
+        <TabsTrigger value="matches">League Matches</TabsTrigger>
         <TabsTrigger value="standings">Standings</TabsTrigger>
         <TabsTrigger value="playoffs">Playoffs</TabsTrigger>
       </TabsList>
@@ -32,7 +32,7 @@ export default function TournamentDashboard() {
         <TeamManager />
       </TabsContent>
       <TabsContent value="matches">
-        <MatchManager />
+        <LeagueManager />
       </TabsContent>
       <TabsContent value="standings">
         <StandingsDisplay />

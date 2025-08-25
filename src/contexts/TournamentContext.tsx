@@ -8,7 +8,7 @@ interface TournamentContextType {
   teams: Team[];
   matches: Match[];
   addTeam: (name: string) => void;
-  scheduleMatch: (team1Id: number, team2Id: number, date: Date, time: string) => void;
+  generateLeagueMatches: () => void;
   updateMatchResult: (matchId: number, winnerId: number | null, isDraw: boolean) => void;
   standings: Standing[];
   playoffTeams: Team[];
@@ -68,7 +68,6 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const resetTournament = () => {
     setTeams([]);
     setMatches([]);
-    // Explicitly remove from localStorage as well
     localStorage.removeItem('tournament_teams');
     localStorage.removeItem('tournament_matches');
     toast({
@@ -93,14 +92,35 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
   };
 
-  const scheduleMatch = (team1Id: number, team2Id: number, date: Date, time: string) => {
-    if (team1Id === team2Id) {
-        toast({ title: "Error", description: "A team cannot play against itself.", variant: "destructive" });
-        return;
+  const generateLeagueMatches = () => {
+    if (teams.length < 2) {
+      toast({ title: "Error", description: "You need at least 2 teams to generate matches.", variant: "destructive" });
+      return;
     }
-    const newMatch: Match = { id: Date.now(), team1Id, team2Id, date, time, winnerId: null, isDraw: false, stage: 'group' };
-    setMatches(prev => [...prev, newMatch]);
-    toast({ title: "Success", description: "Match scheduled successfully." });
+    
+    // Clear existing group matches before generating new ones
+    const nonGroupMatches = matches.filter(m => m.stage !== 'group');
+    const newMatches: Match[] = [];
+    const teamIds = teams.map(t => t.id);
+
+    for (let i = 0; i < teamIds.length; i++) {
+      for (let j = i + 1; j < teamIds.length; j++) {
+        const newMatch: Match = {
+          id: Date.now() + i * teams.length + j,
+          team1Id: teamIds[i],
+          team2Id: teamIds[j],
+          date: new Date(),
+          time: 'TBD',
+          winnerId: null,
+          isDraw: false,
+          stage: 'group',
+        };
+        newMatches.push(newMatch);
+      }
+    }
+
+    setMatches([...nonGroupMatches, ...newMatches]);
+    toast({ title: "Success", description: "League matches have been generated." });
   };
 
   const updateMatchResult = (matchId: number, winnerId: number | null, isDraw: boolean) => {
@@ -157,14 +177,19 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const playoffTeams = useMemo(() => {
       if (loading) return [];
-      const groupMatchesFinished = matches.filter(m => m.stage === 'group' && m.winnerId === null && !m.isDraw).length === 0;
+      const groupMatches = matches.filter(m => m.stage === 'group');
+      if (groupMatches.length === 0) return [];
+
+      const groupMatchesFinished = groupMatches.every(m => m.winnerId !== null || m.isDraw);
+      
       if (standings.length < 4 || !groupMatchesFinished) return [];
+      
       return standings.slice(0, 4).map(s => teams.find(t => t.id === s.teamId)!);
   }, [standings, teams, matches, loading]);
 
   const generatePlayoffs = () => {
     if (playoffTeams.length < 4) {
-      toast({ title: "Error", description: "Not enough teams or group stage is not finished.", variant: "destructive" });
+      toast({ title: "Error", description: "Top 4 teams not available or group stage is not finished.", variant: "destructive" });
       return;
     }
     if (matches.some(m => m.stage === 'semi-final')) {
@@ -210,7 +235,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return undefined;
   }, [finalMatch, teams, loading]);
 
-  const value = { teams, matches, addTeam, scheduleMatch, updateMatchResult, standings, playoffTeams, generatePlayoffs, semiFinalMatches, finalMatch, champion, loading, resetTournament };
+  const value = { teams, matches, addTeam, generateLeagueMatches, updateMatchResult, standings, playoffTeams, generatePlayoffs, semiFinalMatches, finalMatch, champion, loading, resetTournament };
 
   return (
     <TournamentContext.Provider value={value}>
