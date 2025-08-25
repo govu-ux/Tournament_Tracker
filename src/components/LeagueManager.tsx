@@ -13,10 +13,9 @@ import { format } from 'date-fns';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 
 function SetResultPopover({ matchId }: { matchId: number }) {
-  const { updateMatchResult, matches } = useTournament();
+  const { updateMatchResult, matches, teams } = useTournament();
   const match = matches.find(m => m.id === matchId);
   const getTeamName = (id: number) => teams.find(t => t.id === id)?.name || 'Unknown Team';
-  const { teams } = useTournament();
   
   const [score1, setScore1] = useState('');
   const [score2, setScore2] = useState('');
