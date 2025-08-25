@@ -17,6 +17,7 @@ export default function PlayoffsManager() {
   const groupStageFinished = groupMatches.length > 0 && groupMatches.every(m => m.winnerId !== null || m.isDraw);
 
   const renderMatchResultInput = (match: any) => {
+    if (!match) return null;
     if (match.winnerId) {
       return <span className="font-semibold text-primary">{getTeamName(match.winnerId)} won</span>;
     }
