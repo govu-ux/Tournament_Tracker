@@ -9,7 +9,7 @@ export interface Match {
   team2Id: number;
   team1Score: number | null;
   team2Score: number | null;
-  date: Date;
+  date: string; // Use string to prevent serialization issues with Dates
   time: string;
   winnerId: number | null;
   isDraw: boolean;
