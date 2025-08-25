@@ -16,7 +16,7 @@ export default function StandingsDisplay() {
           Tournament Standings
         </CardTitle>
         <CardDescription>
-          Team standings are automatically calculated based on match results (Win: 3, Draw: 1, Loss: 0).
+          Standings are based on points (Win: 3, Draw: 1, Loss: 0), then score difference.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -29,6 +29,7 @@ export default function StandingsDisplay() {
               <TableHead className="text-center">Won</TableHead>
               <TableHead className="text-center">Lost</TableHead>
               <TableHead className="text-center">Drawn</TableHead>
+              <TableHead className="text-center">Score Diff.</TableHead>
               <TableHead className="text-center">Points</TableHead>
             </TableRow>
           </TableHeader>
@@ -42,12 +43,13 @@ export default function StandingsDisplay() {
                   <TableCell className="text-center">{s.wins}</TableCell>
                   <TableCell className="text-center">{s.losses}</TableCell>
                   <TableCell className="text-center">{s.draws}</TableCell>
+                  <TableCell className="text-center">{s.scoreDifference > 0 ? `+${s.scoreDifference}` : s.scoreDifference}</TableCell>
                   <TableCell className="text-center font-bold">{s.points}</TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="text-center">
+                <TableCell colSpan={8} className="text-center">
                   No standings to display. Add teams and play matches.
                 </TableCell>
               </TableRow>

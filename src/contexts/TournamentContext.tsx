@@ -9,7 +9,8 @@ interface TournamentContextType {
   matches: Match[];
   addTeam: (name: string) => void;
   generateLeagueMatches: () => void;
-  updateMatchResult: (matchId: number, winnerId: number | null, isDraw: boolean) => void;
+  updateMatchResult: (matchId: number, team1Score: number, team2Score: number) => void;
+  updatePlayoffResult: (matchId: number, winnerId: number | null, isDraw: boolean) => void;
   autoUpdateMatchResult: (matchId: number) => void;
   standings: Standing[];
   playoffTeams: Team[];
@@ -110,6 +111,8 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           id: Date.now() + i * teams.length + j,
           team1Id: teamIds[i],
           team2Id: teamIds[j],
+          team1Score: null,
+          team2Score: null,
           date: new Date(),
           time: 'TBD',
           winnerId: null,
@@ -124,7 +127,27 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     toast({ title: "Success", description: "League matches have been generated." });
   };
 
-  const updateMatchResult = (matchId: number, winnerId: number | null, isDraw: boolean) => {
+  const updateMatchResult = (matchId: number, team1Score: number, team2Score: number) => {
+    let winnerId: number | null = null;
+    let isDraw = false;
+
+    if (team1Score > team2Score) {
+      winnerId = matches.find(m => m.id === matchId)!.team1Id;
+    } else if (team2Score > team1Score) {
+      winnerId = matches.find(m => m.id === matchId)!.team2Id;
+    } else {
+      isDraw = true;
+    }
+
+    setMatches(prev =>
+      prev.map(match =>
+        match.id === matchId ? { ...match, winnerId, isDraw, team1Score, team2Score } : match
+      )
+    );
+    toast({ title: "Success", description: "Match result updated." });
+  };
+  
+  const updatePlayoffResult = (matchId: number, winnerId: number | null, isDraw: boolean) => {
     setMatches(prev =>
       prev.map(match =>
         match.id === matchId ? { ...match, winnerId, isDraw } : match
@@ -138,20 +161,15 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!match) return;
 
     if (match.stage === 'group') {
-      const random = Math.random();
-      if (random < 0.33) {
-        updateMatchResult(matchId, match.team1Id, false); // Team 1 wins
-      } else if (random < 0.66) {
-        updateMatchResult(matchId, match.team2Id, false); // Team 2 wins
-      } else {
-        updateMatchResult(matchId, null, true); // Draw
-      }
+      const score1 = Math.floor(Math.random() * 10);
+      const score2 = Math.floor(Math.random() * 10);
+      updateMatchResult(matchId, score1, score2);
     } else { // Playoffs (no draws)
       const random = Math.random();
       if (random < 0.5) {
-        updateMatchResult(matchId, match.team1Id, false); // Team 1 wins
+        updatePlayoffResult(matchId, match.team1Id, false); // Team 1 wins
       } else {
-        updateMatchResult(matchId, match.team2Id, false); // Team 2 wins
+        updatePlayoffResult(matchId, match.team2Id, false); // Team 2 wins
       }
     }
     toast({ title: "Success", description: "Match result auto-generated." });
@@ -160,42 +178,49 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const standings = useMemo<Standing[]>(() => {
     if (loading) return [];
     const stats: { [key: number]: Omit<Standing, 'rank' | 'teamName' | 'teamId'> } = teams.reduce((acc, team) => {
-      acc[team.id] = { played: 0, wins: 0, losses: 0, draws: 0, points: 0 };
+      acc[team.id] = { played: 0, wins: 0, losses: 0, draws: 0, points: 0, scoreDifference: 0 };
       return acc;
     }, {} as { [key: number]: Omit<Standing, 'rank' | 'teamName' | 'teamId'> });
 
     matches.filter(m => m.stage === 'group' && (m.winnerId !== null || m.isDraw)).forEach(match => {
-      if (stats[match.team1Id]) {
-        stats[match.team1Id].played++;
-        if (match.isDraw) {
-          stats[match.team1Id].draws++;
-          stats[match.team1Id].points++;
-        } else if (match.winnerId === match.team1Id) {
-          stats[match.team1Id].wins++;
-          stats[match.team1Id].points += 3;
+      const { team1Id, team2Id, team1Score, team2Score, winnerId, isDraw } = match;
+
+      if (stats[team1Id] && team1Score !== null && team2Score !== null) {
+        stats[team1Id].played++;
+        stats[team1Id].scoreDifference += team1Score - team2Score;
+        if (isDraw) {
+          stats[team1Id].draws++;
+          stats[team1Id].points++;
+        } else if (winnerId === team1Id) {
+          stats[team1Id].wins++;
+          stats[team1Id].points += 3;
         } else {
-          stats[match.team1Id].losses++;
+          stats[team1Id].losses++;
         }
       }
-      if (stats[match.team2Id]) {
-        stats[match.team2Id].played++;
-        if (match.isDraw) {
-          stats[match.team2Id].draws++;
-          stats[match.team2Id].points++;
-        } else if (match.winnerId === match.team2Id) {
-          stats[match.team2Id].wins++;
-          stats[match.team2Id].points += 3;
+      if (stats[team2Id] && team1Score !== null && team2Score !== null) {
+        stats[team2Id].played++;
+        stats[team2Id].scoreDifference += team2Score - team1Score;
+        if (isDraw) {
+          stats[team2Id].draws++;
+          stats[team2Id].points++;
+        } else if (winnerId === team2Id) {
+          stats[team2Id].wins++;
+          stats[team2Id].points += 3;
         } else {
-          stats[match.team2Id].losses++;
+          stats[team2Id].losses++;
         }
       }
     });
-
-    const sortedStandings = teams.map(team => ({
-        teamId: team.id,
-        teamName: team.name,
-        ...stats[team.id]
-    })).sort((a, b) => b.points - a.points || (b.wins - a.wins));
+    
+    const sortedStandings = teams
+        .map(team => ({
+            teamId: team.id,
+            teamName: team.name,
+            ...stats[team.id]
+        }))
+        .filter(s => s !== undefined)
+        .sort((a, b) => b.points - a.points || b.scoreDifference - a.scoreDifference);
 
     return sortedStandings.map((s, index) => ({ ...s, rank: index + 1 }));
   }, [teams, matches, loading]);
@@ -223,8 +248,8 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     const [team1, team2, team3, team4] = playoffTeams;
-    const semiFinal1: Match = { id: Date.now() + 1, team1Id: team1.id, team2Id: team4.id, date: new Date(), time: "TBD", winnerId: null, isDraw: false, stage: 'semi-final' };
-    const semiFinal2: Match = { id: Date.now() + 2, team1Id: team2.id, team2Id: team3.id, date: new Date(), time: "TBD", winnerId: null, isDraw: false, stage: 'semi-final' };
+    const semiFinal1: Match = { id: Date.now() + 1, team1Id: team1.id, team2Id: team4.id, team1Score: null, team2Score: null, date: new Date(), time: "TBD", winnerId: null, isDraw: false, stage: 'semi-final' };
+    const semiFinal2: Match = { id: Date.now() + 2, team1Id: team2.id, team2Id: team3.id, team1Score: null, team2Score: null, date: new Date(), time: "TBD", winnerId: null, isDraw: false, stage: 'semi-final' };
     
     setMatches(prev => [...prev, semiFinal1, semiFinal2]);
     toast({ title: "Success", description: "Playoff matches have been generated." });
@@ -239,7 +264,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const existingFinal = matches.find(m => m.stage === 'final');
       if (existingFinal) return existingFinal;
       
-      const newFinal: Match = { id: Date.now(), team1Id: semiFinalWinners[0]!, team2Id: semiFinalWinners[1]!, date: new Date(), time: "TBD", winnerId: null, isDraw: false, stage: 'final' };
+      const newFinal: Match = { id: Date.now(), team1Id: semiFinalWinners[0]!, team2Id: semiFinalWinners[1]!, team1Score: null, team2Score: null, date: new Date(), time: "TBD", winnerId: null, isDraw: false, stage: 'final' };
       
       setTimeout(() => {
         if (!matches.some(m => m.id === newFinal.id)) {
@@ -260,7 +285,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return undefined;
   }, [finalMatch, teams, loading]);
 
-  const value = { teams, matches, addTeam, generateLeagueMatches, updateMatchResult, autoUpdateMatchResult, standings, playoffTeams, generatePlayoffs, semiFinalMatches, finalMatch, champion, loading, resetTournament };
+  const value = { teams, matches, addTeam, generateLeagueMatches, updateMatchResult, updatePlayoffResult, autoUpdateMatchResult, standings, playoffTeams, generatePlayoffs, semiFinalMatches, finalMatch, champion, loading, resetTournament };
 
   return (
     <TournamentContext.Provider value={value}>

@@ -11,7 +11,7 @@ import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 export default function PlayoffsManager() {
-  const { teams, matches, playoffTeams, generatePlayoffs, semiFinalMatches, finalMatch, champion, updateMatchResult, autoUpdateMatchResult } = useTournament();
+  const { teams, matches, playoffTeams, generatePlayoffs, semiFinalMatches, finalMatch, champion, updatePlayoffResult, autoUpdateMatchResult } = useTournament();
   const getTeamName = (id: number) => teams.find(t => t.id === id)?.name || 'Unknown Team';
   const groupMatches = matches.filter(m => m.stage === 'group');
   const groupStageFinished = groupMatches.length > 0 && groupMatches.every(m => m.winnerId !== null || m.isDraw);
@@ -25,7 +25,7 @@ export default function PlayoffsManager() {
         <Popover>
           <PopoverTrigger asChild><Button variant="outline" size="sm">Set Winner</Button></PopoverTrigger>
           <PopoverContent className="w-auto p-4">
-            <RadioGroup onValueChange={(value) => updateMatchResult(match.id, Number(value), false)}>
+            <RadioGroup onValueChange={(value) => updatePlayoffResult(match.id, Number(value), false)}>
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value={String(match.team1Id)} id={`w1-${match.id}`} />

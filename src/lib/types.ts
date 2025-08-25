@@ -7,6 +7,8 @@ export interface Match {
   id: number;
   team1Id: number;
   team2Id: number;
+  team1Score: number | null;
+  team2Score: number | null;
   date: Date;
   time: string;
   winnerId: number | null;
@@ -23,4 +25,5 @@ export interface Standing {
   losses: number;
   draws: number;
   points: number;
+  scoreDifference: number;
 }
